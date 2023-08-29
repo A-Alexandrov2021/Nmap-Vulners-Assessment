@@ -13,6 +13,7 @@ rescue LoadError => msg
   exit!
 end
 
+
 unless ARGV.length > 0
 	puts "Try ./webshot.rb -h\r\n\r\n"
 	exit!
