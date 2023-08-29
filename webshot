@@ -8,6 +8,7 @@ begin
   require 'nokogiri'
   require 'net/https'
   require 'openssl'
+  require 'selenium-webdriver' # Add this line to include the selenium-webdriver gem
 rescue LoadError => msg
   puts msg.message.chomp + " try running \'bundle install\' first"
   exit!
@@ -129,10 +130,31 @@ def get_screenshot(url)
 end
 
 
+def get_screenshot_with_webdriver(url)
+  begin
+    puts "Taking screenshot: #{url}" if @options[:verbose]
+    
+    options = Selenium::WebDriver::Chrome::Options.new
+    options.add_argument('--headless') # Run Chrome in headless mode (no GUI)
+
+    driver = Selenium::WebDriver.for :chrome, options: options
+    driver.navigate.to url
+
+    screenshot = driver.screenshot_as(:png)
+    driver.quit
+
+    return screenshot
+  rescue => error
+    puts error if @options[:verbose]
+    return nil
+  end
+end
+
 puts "Capturing #{@options[:urls].size.to_s} screenshots using #{@threads.max.to_s} threads"
 @options[:urls].each do |url|
   @threads.process {
-    screenshot = get_screenshot(url)
+    screenshot = get_screenshot_with_webdriver(url) # Use the WebDriver method
+
     if screenshot
       begin
         ip = url.split('//')[1]
@@ -140,8 +162,9 @@ puts "Capturing #{@options[:urls].size.to_s} screenshots using #{@threads.max.to
         
         FileUtils.mkdir_p(output_dir) # Create the output directory if it doesn't exist
         
-        file = screenshot.to_file(File.join(output_dir, "#{ip.gsub(/[:\/]/, '_')}.png"))
-        FileUtils.rm(file.path) unless file.size > 3273
+        file = File.join(output_dir, "#{ip.gsub(/[:\/]/, '_')}.png")
+        File.open(file, 'wb') { |f| f.write(screenshot) } # Save the screenshot
+        FileUtils.rm(file) unless File.size?(file) && File.size(file) > 3273
       rescue => error
         if error.message.include? "No such file or directory"
           puts "Directory \"#{@options[:output]}\" does not exist." if @options[:verbose]
@@ -152,5 +175,6 @@ puts "Capturing #{@options[:urls].size.to_s} screenshots using #{@threads.max.to
     end
   }
 end
+
 puts "Screenshots saved to: #{@options[:output]}"
 @threads.shutdown
