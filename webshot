@@ -21,9 +21,9 @@ end
 
 @options = {}
   args = OptionParser.new do |opts|
-    opts.banner = "Webshot.rb VERSION: 1.1 - UPDATED: 7/16/2019\r\n\r\n"
+    opts.banner = "Webshot.rb VERSION: 1.2 - UPDATED: 8/29/2023\r\n\r\n"
     opts.banner += "References:\r\n"
-    opts.banner += "\thttps://github.com/R3dy/webshot\r\n\r\n"
+    opts.banner += "\thttps://github.com/A-Alexandrov2021/Nmap-Vulners-Assessment/webshot\r\n\r\n"
     opts.banner += "Usage: ./webshot.rb [options] [target list]\r\n\r\n"
     opts.on("-t", "--targets [Nmap XML File]", "XML Output From Nmap Scan") { |targets| @options[:targets] = File.open(targets, "r").read }
     opts.on("-c", "--css [CSS File]", "File containing css to apply to all screenshtos") { |css| @options[:css] = File.open(css, "r") }
@@ -131,20 +131,25 @@ end
 puts "Capturing #{@options[:urls].size.to_s} screenshots using #{@threads.max.to_s} threads"
 @options[:urls].each do |url|
   @threads.process {
-		screenshot = get_screenshot(url)
-		if screenshot
-			begin
-				ip = url.split('//')[1]
-				file = screenshot.to_file("#{@options[:output]}/#{url.split(':')[0]}_#{ip.gsub(/[:\/]/,'_')}.png")
-				FileUtils.rm(file.path) unless file.size > 3273
-			rescue => error
-				if error.message.include? "No such file or directory"
-					puts "Directory \"#{@options[:output]}\" does not exist." if @options[:verbose]
-					return
-				end
-				next
-			end
-		end
+    screenshot = get_screenshot(url)
+    if screenshot
+      begin
+        ip = url.split('//')[1]
+        output_dir = File.join(@options[:output], "#{url.split(':')[0]}_#{ip.gsub(/[:\/]/, '_')}")
+        
+        FileUtils.mkdir_p(output_dir) # Create the output directory if it doesn't exist
+        
+        file = screenshot.to_file(File.join(output_dir, "#{ip.gsub(/[:\/]/, '_')}.png"))
+        FileUtils.rm(file.path) unless file.size > 3273
+      rescue => error
+        if error.message.include? "No such file or directory"
+          puts "Directory \"#{@options[:output]}\" does not exist." if @options[:verbose]
+          return
+        end
+        next
+      end
+    end
   }
 end
+puts "Screenshots saved to: #{@options[:output]}"
 @threads.shutdown
